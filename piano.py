@@ -15,21 +15,35 @@ WHITE = (255, 255, 255)
 
 
 class PianoKey:
-    def __init__(self, color, screen_width=600, screen_height=400):
+    def __init__(self, note, color, screen_width=600, screen_height=400):
         self.color = color
+        self.note = note
         self.screen_width = screen_width
         self.screen_height = screen_height
     
-    def draw_key(self, image, pt1, pt2):
+    def draw(self, image, pt1, pt2):
         cv2.rectangle(image, (pt1), (pt2), self.color, -1)
 
 
 class Game:
     def __init__(self):
         self.keys = []
+        self.shift = 75
 
-        #Initialize keys
-        self.KeyA = PianoKey(WHITE)
+        self.notes = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C2']
+        #Initialize Keys
+        self.Key_C = PianoKey('C', WHITE)
+        self.Key_D = PianoKey('D', WHITE)
+        self.Key_E = PianoKey('E', WHITE)
+        self.Key_F = PianoKey('F', WHITE)
+        self.Key_G = PianoKey('G', WHITE)
+        self.Key_A = PianoKey('A', WHITE)
+        self.Key_B = PianoKey('B', WHITE)
+        self.Key_C2 = PianoKey('C', WHITE)
+
+        for note in self.notes:
+            self.keys.append(self.Key_)
+        
 
         # Create the hand detector
         base_options = BaseOptions(model_asset_path='data/hand_landmarker.task')
@@ -73,11 +87,15 @@ class Game:
             # The image comes mirrored - flip it
             image = cv2.flip(image, 1)
 
-            #Draw Piano
             #loop through number of keys we want, self.
-            cv2.rectangle(image, (600, 300), (675, 500), WHITE, -1)
-            # Height = 300
-            #WIdth  = 80
+            # cv2.rectangle(image, (600, 300), (675, 500), WHITE, -1)
+            
+            
+            #Draw Piano
+            # for key in self.keys:
+            #     key.draw(image)
+            self.Key_C.draw(image, (600, 300), (675, 600))
+            
 
             # Convert the image to a readable format and find the hands
             to_detect = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
