@@ -12,6 +12,8 @@ VisionRunningMode = mp.tasks.vision.RunningMode
 DrawingUtil = mp.solutions.drawing_utils
 
 WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+BLUE = (0, 0, 255)
 
 
 class PianoKey:
@@ -28,7 +30,7 @@ class PianoKey:
 class Game:
     def __init__(self):
         self.keys = []
-        self.shift = 75
+        self.x_shift = 0
 
         self.notes = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C2']
         #Initialize Keys
@@ -39,11 +41,16 @@ class Game:
         self.Key_G = PianoKey('G', WHITE)
         self.Key_A = PianoKey('A', WHITE)
         self.Key_B = PianoKey('B', WHITE)
-        self.Key_C2 = PianoKey('C', WHITE)
+        self.Key_C2 = PianoKey('C2', WHITE)   
 
-        for note in self.notes:
-            self.keys.append(self.Key_)
-        
+        self.keys.append(self.Key_C)
+        self.keys.append(self.Key_D)
+        self.keys.append(self.Key_E)
+        self.keys.append(self.Key_F)
+        self.keys.append(self.Key_G)
+        self.keys.append(self.Key_A)
+        self.keys.append(self.Key_B)
+        self.keys.append(self.Key_C2)
 
         # Create the hand detector
         base_options = BaseOptions(model_asset_path='data/hand_landmarker.task')
@@ -76,6 +83,36 @@ class Game:
                                        solutions.drawing_styles.get_default_hand_landmarks_style(),
                                        solutions.drawing_styles.get_default_hand_connections_style())
 
+    def check_press(self, image, detection_result):
+        """
+        Draws a green circle on the index finger 
+        and calls a method to check if we've intercepted
+        with the enemy
+        Args:
+            image (Image): The image to draw on
+            detection_result (HandLandmarkerResult): HandLandmarker detection results
+        """
+        imageHeight, imageWidth = image.shape[:2]
+        hand_landmarks_list = detection_result.hand_landmarks
+        for idx in range(len(hand_landmarks_list)):
+            hand_landmarks = hand_landmarks_list[idx]
+            
+            # Get the coordinates of just the index finger 
+            finger = hand_landmarks[HandLandmarkPoints.INDEX_FINGER_TIP.value]
+            # Map the coordinates back to screen dimensions 
+            pixelCoordinates = DrawingUtil._normalized_to_pixel_coordinates(finger.x, finger.y, imageWidth, imageHeight)
+            if pixelCoordinates:
+                # Draw the circle around index finger
+                cv2.circle(image, (pixelCoordinates[0], pixelCoordinates[1]), 25, BLUE, 5)
+                # Check if we intercept the enemy
+                self.check_enemy_intercept(pixelCoordinates[0], pixelCoordinates[1], self.green_enemy, image)
+            if pixelCoordinates and self.level == 'Infinite Spawn':
+                for enemy in self.enemies:
+                    self.check_enemy_intercept(pixelCoordinates[0], pixelCoordinates[1], enemy, image)
+
+
+
+
     def run(self):
         while self.video.isOpened():
             # Get the current frame
@@ -87,14 +124,14 @@ class Game:
             # The image comes mirrored - flip it
             image = cv2.flip(image, 1)
 
-            #loop through number of keys we want, self.
-            # cv2.rectangle(image, (600, 300), (675, 500), WHITE, -1)
-            
             
             #Draw Piano
-            # for key in self.keys:
-            #     key.draw(image)
-            self.Key_C.draw(image, (600, 300), (675, 600))
+            cv2.rectangle(image, (600, 350), (1200, 400), BLACK, -1)
+            x = 0
+            for key in self.keys:
+                key.draw(image, (600 + x, 400), (675 + x, 700))
+                cv2.rectangle(image, (600 + x, 400), (675 + x, 700), BLACK, 4)
+                x += 75
             
 
             # Convert the image to a readable format and find the hands
@@ -103,6 +140,7 @@ class Game:
 
             # Draw the hand landmarks
             self.draw_landmarks_on_hand(image, results)
+            self.check_key_press(image, results)
 
             # Change the color of the frame back
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -110,7 +148,6 @@ class Game:
 
             # Break the loop if the user presses 'q'
             if cv2.waitKey(50) & 0xFF == ord('q'):
-                print(self.score)
                 break
         
         # Release our video and close all windows
