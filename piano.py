@@ -14,20 +14,24 @@ DrawingUtil = mp.solutions.drawing_utils
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-BLUE = (0, 0, 255)
-
-
+BLUE = (0, 100, 255)
+GREY = (93, 93, 93)
+RED = (200, 0, 0)
 
 
 class PianoKey:
-    def __init__(self, note, color, screen_width=600, screen_height=400):
+    def __init__(self, note, color, note_file, screen_width=600, screen_height=400):
         self.color = color
         self.note = note
+        self.note_file = None
         self.screen_width = screen_width
         self.screen_height = screen_height
+        self.bounds = []
     
-    def draw(self, image, pt1, pt2):
-        cv2.rectangle(image, (pt1), (pt2), self.color, -1)
+    def draw(self, screen, coordinates):
+        # cv2.rectangle(image, (pt1), (pt2), self.color, -1)
+        pygame.draw.rect(screen, WHITE, (coordinates), width=0)
+        
 
     def play_note():
         pass
@@ -40,7 +44,7 @@ class Game:
 
         self.notes = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C2']
         #Initialize Keys
-        self.Key_C = PianoKey('C', WHITE)
+        self.Key_C = PianoKey('C', WHITE, pygame.mixer.Sound("sounds/C.wav"))
         self.Key_D = PianoKey('D', WHITE)
         self.Key_E = PianoKey('E', WHITE)
         self.Key_F = PianoKey('F', WHITE)
@@ -97,10 +101,13 @@ class Game:
                                        solutions.drawing_styles.get_default_hand_landmarks_style(),
                                        solutions.drawing_styles.get_default_hand_connections_style())
 
-    def check_key_press(self, finger_x, finger_y, key, image):
-        #A key will count as 'played' if the x coordinate is within the keys bounds and y coordinate is below ____
-        if finger_x > key.x - 10 and finger_x < key.x + 10 and finger_y > key.y - 10 and finger_y < key.y + 10:
+
+    
+    def check_key_press(self, finger_x, finger_y, key):
+        if finger_x > key.bounds[0] and finger_x < key.bounds[1] and finger_y > 300 and finger_y < 400:
             key.play_note()
+            print(key.note)
+
 
     def track_finger(self, image, detection_result):
         imageHeight, imageWidth = image.shape[:2]
@@ -109,19 +116,17 @@ class Game:
             hand_landmarks = hand_landmarks_list[idx]
             
             # Get the coordinates of just the index finger 
-            finger = hand_landmarks[HandLandmarkPoints.INDEX_FINGER_TIP.value]
+            index_finger = hand_landmarks[HandLandmarkPoints.INDEX_FINGER_TIP.value]
             # Map the coordinates back to screen dimensions 
-            pixelCoordinates = DrawingUtil._normalized_to_pixel_coordinates(finger.x, finger.y, imageWidth, imageHeight)
+            pixelCoordinates = DrawingUtil._normalized_to_pixel_coordinates(index_finger.x, index_finger.y, imageWidth, imageHeight)
             if pixelCoordinates:
                 return pixelCoordinates
-                # Draw the circle around index finger
-                # pygame.draw.circle(self.screen, BLUE, (pixelCoordinates[0], pixelCoordinates[1]), 25, 2)
-                # cv2.circle(image, (pixelCoordinates[0], pixelCoordinates[1]), 25, BLUE, 5)
-
-                # self.check_key_press(pixelCoordinates[0], pixelCoordinates[1], self.green_enemy, image)
-
-
-
+            
+            # middle_finger = hand_landmarks[HandLandmarkPoints.MIDDLE_FINGER_TIP.value]
+            # pixelCoordinates = DrawingUtil._normalized_to_pixel_coordinates(middle_finger.x, middle_finger.y, imageWidth, imageHeight)
+            # if pixelCoordinates:
+            #     return pixelCoordinates
+            
 
     def run(self):
         while self.video.isOpened():
@@ -131,7 +136,7 @@ class Game:
                     sys.exit()
 
             #Clear Screen
-            self.screen.fill((0,0,0))
+            self.screen.fill(GREY)
 
             # Get the current frame
             frame = self.video.read()[1]
@@ -144,12 +149,15 @@ class Game:
 
             
             #Draw Piano
-            # pygame.rectangle(self.screen, (600, 350), (1200, 400), BLACK, -1)
             x = 0
             for key in self.keys:
-                # key.draw(self.screen, (600 + x, 400), (675 + x, 700))
-                cv2.rectangle(image, (600 + x, 400), (675 + x, 700), BLACK, 4)
-                x += 75
+                key.bounds.clear()
+                key.draw(self.screen, (100 + x, 100, 75, 300))
+                key.bounds.append(100 + x)
+                key.bounds.append(175 + x)
+                x += 85
+            pygame.draw.rect(self.screen, BLACK, (100, 50, 670, 50), width=0)
+            pygame.draw.line(self.screen, RED, (100, 300), (770, 300), 4)
             
 
             # Convert the image to a readable format and find the hands
@@ -161,10 +169,15 @@ class Game:
             coordinates = self.track_finger(image, results)
             if coordinates != None:
                 pygame.draw.circle(self.screen, BLUE, (coordinates[0], coordinates[1]), 10, 2)
+                for key in self.keys:
+                    self.check_key_press(coordinates[0], coordinates[1], key)
+
+            #Play Notes
+
 
             # Change the color of the frame back
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            cv2.imshow('Hand Tracking', image)
+            # cv2.imshow('Hand Tracking', image)
             
 
             # Break the loop if the user presses 'q'
