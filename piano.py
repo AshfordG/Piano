@@ -22,13 +22,13 @@ RED = (200, 0, 0)
 
 
 class PianoKey:
-    def __init__(self, note, color, note_file, screen_width=600, screen_height=400):
+    def __init__(self, note, color, note_file):
         self.color = color
         self.note = note
         self.note_file = note_file
-        self.screen_width = screen_width
-        self.screen_height = screen_height
+        self.can_be_played = True
         self.bounds = []
+
     
     def draw(self, screen, coordinates):
         # cv2.rectangle(image, (pt1), (pt2), self.color, -1)
@@ -36,9 +36,8 @@ class PianoKey:
         
 
     def play_note(self):
-        print('Note file: ', end="")
-        print(self.note_file)
-        pygame.mixer.Sound.play(self.note_file)
+        if self.can_be_played:
+            pygame.mixer.Sound.play(self.note_file)
 
 
 class Game:
@@ -110,7 +109,10 @@ class Game:
     def check_key_press(self, finger_x, finger_y, key):
         if finger_x > key.bounds[0] and finger_x < key.bounds[1] and finger_y > 300 and finger_y < 400:
             key.play_note()
+            key.can_be_played = False
             print(key.note)
+        else:
+            key.can_be_played = True
 
 
     def track_finger(self, image, detection_result):
@@ -124,6 +126,7 @@ class Game:
             # Map the coordinates back to screen dimensions 
             pixelCoordinates = DrawingUtil._normalized_to_pixel_coordinates(index_finger.x, index_finger.y, imageWidth, imageHeight)
             if pixelCoordinates:
+                pygame.draw.circle(self.screen, BLUE, (pixelCoordinates[0], pixelCoordinates[1]), 10, 2)
                 return pixelCoordinates
             
             # middle_finger = hand_landmarks[HandLandmarkPoints.MIDDLE_FINGER_TIP.value]
@@ -150,7 +153,6 @@ class Game:
 
             # The image comes mirrored - flip it
             image = cv2.flip(image, 1)
-
             
             #Draw Piano
             x = 0
@@ -172,23 +174,17 @@ class Game:
             self.draw_landmarks_on_hand(image, results)
             coordinates = self.track_finger(image, results)
             if coordinates != None:
-                pygame.draw.circle(self.screen, BLUE, (coordinates[0], coordinates[1]), 10, 2)
                 for key in self.keys:
                     self.check_key_press(coordinates[0], coordinates[1], key)
 
-            #Play Notes
-
-
             # Change the color of the frame back
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            # cv2.imshow('Hand Tracking', image)
-            
+            cv2.imshow('Hand Tracking', image)
 
             # Break the loop if the user presses 'q'
             if cv2.waitKey(50) & 0xFF == ord('q'):
                 break
 
-            # pygame.draw.circle(self.screen, BLUE, (100, 100), 15, 2)
             pygame.display.flip()
         
         # Release our video and close all windows
