@@ -11,6 +11,8 @@ HandLandmarkPoints = mp.solutions.hands.HandLandmark
 HandLandmarkerOptions = mp.tasks.vision.HandLandmarkerOptions
 VisionRunningMode = mp.tasks.vision.RunningMode
 DrawingUtil = mp.solutions.drawing_utils
+pygame.mixer.init()
+
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -23,7 +25,7 @@ class PianoKey:
     def __init__(self, note, color, note_file, screen_width=600, screen_height=400):
         self.color = color
         self.note = note
-        self.note_file = None
+        self.note_file = note_file
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.bounds = []
@@ -33,8 +35,10 @@ class PianoKey:
         pygame.draw.rect(screen, WHITE, (coordinates), width=0)
         
 
-    def play_note():
-        pass
+    def play_note(self):
+        print('Note file: ', end="")
+        print(self.note_file)
+        pygame.mixer.Sound.play(self.note_file)
 
 
 class Game:
@@ -45,13 +49,13 @@ class Game:
         self.notes = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C2']
         #Initialize Keys
         self.Key_C = PianoKey('C', WHITE, pygame.mixer.Sound("sounds/C.wav"))
-        self.Key_D = PianoKey('D', WHITE)
-        self.Key_E = PianoKey('E', WHITE)
-        self.Key_F = PianoKey('F', WHITE)
-        self.Key_G = PianoKey('G', WHITE)
-        self.Key_A = PianoKey('A', WHITE)
-        self.Key_B = PianoKey('B', WHITE)
-        self.Key_C2 = PianoKey('C2', WHITE)   
+        self.Key_D = PianoKey('D', WHITE, pygame.mixer.Sound("sounds/D.mp3"))
+        self.Key_E = PianoKey('E', WHITE, pygame.mixer.Sound("sounds/E.mp3"))
+        self.Key_F = PianoKey('F', WHITE, pygame.mixer.Sound("sounds/F.mp3"))
+        self.Key_G = PianoKey('G', WHITE, pygame.mixer.Sound("sounds/G.mp3"))
+        self.Key_A = PianoKey('A', WHITE, pygame.mixer.Sound("sounds/A.wav"))
+        self.Key_B = PianoKey('B', WHITE, pygame.mixer.Sound("sounds/B.wav"))
+        self.Key_C2 = PianoKey('C2', WHITE, pygame.mixer.Sound("sounds/C.mp3"))   
 
         self.keys.append(self.Key_C)
         self.keys.append(self.Key_D)
