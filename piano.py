@@ -29,7 +29,6 @@ class PianoKey:
         self.can_be_played = True
         self.bounds = []
 
-    
     def draw(self, screen, coordinates):
         # cv2.rectangle(image, (pt1), (pt2), self.color, -1)
         pygame.draw.rect(screen, WHITE, (coordinates), width=0)
@@ -37,15 +36,18 @@ class PianoKey:
 
     def play_note(self):
         if self.can_be_played:
+            print(self.note)
             pygame.mixer.Sound.play(self.note_file)
 
 
 class Game:
     def __init__(self):
         self.keys = []
+        self.landmarks = []
         self.x_shift = 0
 
         self.notes = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C2']
+        
         #Initialize Keys
         self.Key_C = PianoKey('C', WHITE, pygame.mixer.Sound("sounds/C.wav"))
         self.Key_D = PianoKey('D', WHITE, pygame.mixer.Sound("sounds/D.mp3"))
@@ -65,13 +67,25 @@ class Game:
         self.keys.append(self.Key_B)
         self.keys.append(self.Key_C2)
 
-        # Create the hand detector
+        #Hand landmarks
+        self.index = HandLandmarkPoints.INDEX_FINGER_TIP.value
+        self.middle = HandLandmarkPoints.MIDDLE_FINGER_TIP.value
+        self.ring = HandLandmarkPoints.RING_FINGER_TIP.value
+        self.pinky = HandLandmarkPoints.PINKY_TIP.value
+        self.thumb = HandLandmarkPoints.THUMB_TIP.value
+
+        self.landmarks.append(self.index)
+        self.landmarks.append(self.middle)
+        self.landmarks.append(self.ring)
+        self.landmarks.append(self.pinky)
+        self.landmarks.append(self.thumb)
+
+        # Create Hand Detector
         base_options = BaseOptions(model_asset_path='data/hand_landmarker.task')
         options = HandLandmarkerOptions(base_options=base_options,
                                                 num_hands=2)
         self.detector = HandLandmarker.create_from_options(options)
 
-        # TODO: Load video
         self.video = cv2.VideoCapture(1)
 
         while not self.video.isOpened():
@@ -110,29 +124,48 @@ class Game:
         if finger_x > key.bounds[0] and finger_x < key.bounds[1] and finger_y > 300 and finger_y < 400:
             key.play_note()
             key.can_be_played = False
-            print(key.note)
         else:
             key.can_be_played = True
 
 
-    def track_finger(self, image, detection_result):
+    # def track_finger(self, image, detection_result):
+    #     imageHeight, imageWidth = image.shape[:2]
+    #     hand_landmarks_list = detection_result.hand_landmarks
+    #     for idx in range(len(hand_landmarks_list)):
+    #         hand_landmarks = hand_landmarks_list[idx]
+            
+    #         # Get the coordinates of just the index finger 
+    #         index_finger = hand_landmarks[HandLandmarkPoints.INDEX_FINGER_TIP.value]
+    #         middle_finger = hand_landmarks[HandLandmarkPoints.MIDDLE_FINGER_TIP.value]
+    #         # Map the coordinates back to screen dimensions 
+    #         pixelCoordinates = DrawingUtil._normalized_to_pixel_coordinates(index_finger.x, index_finger.y, imageWidth, imageHeight)
+    #         middleCoordinates = DrawingUtil._normalized_to_pixel_coordinates(middle_finger.x, middle_finger.y, imageWidth, imageHeight)
+    #         if pixelCoordinates:
+    #             pygame.draw.circle(self.screen, BLUE, (pixelCoordinates[0], pixelCoordinates[1]), 10, 2)
+    #             pygame.draw.circle(self.screen, BLUE, (middleCoordinates[0], middleCoordinates[1]), 10, 2)
+    #             return pixelCoordinates
+        
+    def track_finger(self, image, detection_result, landmark):
         imageHeight, imageWidth = image.shape[:2]
         hand_landmarks_list = detection_result.hand_landmarks
         for idx in range(len(hand_landmarks_list)):
             hand_landmarks = hand_landmarks_list[idx]
             
             # Get the coordinates of just the index finger 
-            index_finger = hand_landmarks[HandLandmarkPoints.INDEX_FINGER_TIP.value]
-            # Map the coordinates back to screen dimensions 
-            pixelCoordinates = DrawingUtil._normalized_to_pixel_coordinates(index_finger.x, index_finger.y, imageWidth, imageHeight)
-            if pixelCoordinates:
-                pygame.draw.circle(self.screen, BLUE, (pixelCoordinates[0], pixelCoordinates[1]), 10, 2)
-                return pixelCoordinates
             
-            # middle_finger = hand_landmarks[HandLandmarkPoints.MIDDLE_FINGER_TIP.value]
-            # pixelCoordinates = DrawingUtil._normalized_to_pixel_coordinates(middle_finger.x, middle_finger.y, imageWidth, imageHeight)
-            # if pixelCoordinates:
-            #     return pixelCoordinates
+            finger = hand_landmarks[landmark]
+            # Map the coordinates back to screen dimensions 
+            pixelCoordinates = DrawingUtil._normalized_to_pixel_coordinates(finger.x, finger.y, imageWidth, imageHeight)
+            if pixelCoordinates and landmark == self.thumb:
+                pygame.draw.circle(self.screen, BLUE, (pixelCoordinates[0], pixelCoordinates[1] - 175), 10, 2)
+                return pixelCoordinates 
+            elif pixelCoordinates and landmark == self.pinky:
+                pygame.draw.circle(self.screen, BLUE, (pixelCoordinates[0], pixelCoordinates[1] - 100), 10, 2)
+                return pixelCoordinates
+            elif pixelCoordinates:
+                pygame.draw.circle(self.screen, BLUE, (pixelCoordinates[0], pixelCoordinates[1] ), 10, 2)
+                return pixelCoordinates
+
             
 
     def run(self):
@@ -172,14 +205,15 @@ class Game:
 
             # Draw the hand landmarks
             self.draw_landmarks_on_hand(image, results)
-            coordinates = self.track_finger(image, results)
-            if coordinates != None:
-                for key in self.keys:
-                    self.check_key_press(coordinates[0], coordinates[1], key)
+            for finger in self.landmarks:
+                coordinates = self.track_finger(image, results, finger)
+                if coordinates != None:
+                    for key in self.keys:
+                        self.check_key_press(coordinates[0], coordinates[1], key)
 
             # Change the color of the frame back
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            cv2.imshow('Hand Tracking', image)
+            # cv2.imshow('Hand Tracking', image)
 
             # Break the loop if the user presses 'q'
             if cv2.waitKey(50) & 0xFF == ord('q'):
